@@ -5,7 +5,68 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
 
+# === 随机规则选择器 ===
+def choose_rule(ruleset):
+    if isinstance(ruleset, list):
+        r = random.random()
+        acc = 0
+        for rule, prob in ruleset:
+            acc += prob
+            if r < acc:
+                return rule
+        return ruleset[-1][0]  # fallback
+    return ruleset
 
+# === 支持概率的 L-System 替换器 ===
+def expand_lsystem(start, rules, depth):
+    result = start
+    for _ in range(depth):
+        next_result = ""
+        for ch in result:
+            if ch in rules:
+                replacement = choose_rule(rules[ch])
+                next_result += replacement
+            else:
+                next_result += ch
+        result = next_result
+    return result
+
+# === 命令解析器（支持带角度） ===
+def parse_command(cmd):
+    pattern = r'([Ff\+\-\[\]L])([0-9]{0,3})'
+    parsed = []
+    for match in re.finditer(pattern, cmd):
+        symbol, value = match.groups()
+        parsed.append((symbol, float(value) if value else None))
+    return parsed
+
+# === 绘图器 ===
+def draw_l_system(parsed_cmd, default_angle=25, step=6):
+    x, y = 0.0, 0.0
+    angle = 90
+    stack = []
+    lines = []
+    leaves = []
+
+    for cmd, val in parsed_cmd:
+        if cmd == "F":
+            rad = math.radians(angle)
+            x_new = x + step * math.cos(rad)
+            y_new = y + step * math.sin(rad)
+            lines.append(((x, y), (x_new, y_new)))
+            x, y = x_new, y_new
+        elif cmd == "L":
+            leaves.append((x, y))
+        elif cmd == "+":
+            angle += val if val is not None else default_angle
+        elif cmd == "-":
+            angle -= val if val is not None else default_angle
+        elif cmd == "[":
+            stack.append((x, y, angle))
+        elif cmd == "]":
+            x, y, angle = stack.pop()
+
+    return lines, leaves
 
 # === 绘制输出 ===
 def plot_lines(lines, leaves, buds, filename="probabilistic_tree.png"):
@@ -37,13 +98,15 @@ def plot_lines(lines, leaves, buds, filename="probabilistic_tree.png"):
     plt.close()
     print(f"✅ Tree image saved to {filename}")
 
+all_trunk_segments = []
+
 # === 局部扰动方式（嵌入式波动） ===
 def distort_curve(x_vals, y_vals, scale=15, frequency=5):
     distorted_x = []
     distorted_y = []
     for i in range(len(x_vals)):
         t = i / len(x_vals)
-        amp = scale * (1 - t**0.5)  # 越往上扰动越小
+        amp = scale * (1 - t**0.5)
         wave = math.sin(t * math.pi * frequency) * amp
         normal_dx = y_vals[min(i+1, len(y_vals)-1)] - y_vals[max(i-1, 0)]
         normal_dy = -(x_vals[min(i+1, len(x_vals)-1)] - x_vals[max(i-1, 0)])
@@ -55,22 +118,22 @@ def distort_curve(x_vals, y_vals, scale=15, frequency=5):
 
     return distorted_x, distorted_y
 
-# === 生成带反馈的 Bézier 主干曲线及芽点 ===
-def generate_feedback_trunk_with_buds(n=6):
-    ctrl_x = [0]
-    ctrl_y = [0]
-    angle = 90
+# === 主干生成函数（支持初始位置与方向） ===
+def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, length_range=(20, 40)):
+    ctrl_x = [start_pos[0]]
+    ctrl_y = [start_pos[1]]
+    angle = start_angle
     total_angle_change = 0
 
     for i in range(1, n):
         if i == 1:
-            delta_angle = random.uniform(-10, 10)
+            delta_angle = random.uniform(-30, 30)
         else:
             balance_bias = -0.2 * total_angle_change
-            delta_angle = random.uniform(-70, 70) + balance_bias
+            delta_angle = random.uniform(-40, 40) + balance_bias * 0.5
         angle += delta_angle
 
-        length = random.uniform(20, 40)
+        length = random.uniform(*length_range)
         dx = math.cos(math.radians(angle)) * length
         dy = math.sin(math.radians(angle)) * length
         if i == 1 and dy < 10:
@@ -89,16 +152,12 @@ def generate_feedback_trunk_with_buds(n=6):
             while dtheta < -180: dtheta += 360
             total_angle_change += dtheta
 
-    # 插值曲线
     k = min(3, len(ctrl_x) - 1)
     tck, u = splprep([ctrl_x, ctrl_y], s=0, k=k)
     u_fine = np.linspace(0, 1, 150)
     x_vals, y_vals = splev(u_fine, tck)
-
-    # 应用扰动
     x_vals, y_vals = distort_curve(x_vals, y_vals, scale=15, frequency=5)
 
-    # 提取芽点
     buds = []
     for i in range(5, len(x_vals) - 1, 10):
         x, y = x_vals[i], y_vals[i]
@@ -108,17 +167,37 @@ def generate_feedback_trunk_with_buds(n=6):
         fate = random.choices(['grow', 'flower', 'dormant', 'abort'], [0.4, 0.2, 0.3, 0.1])[0]
         buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate })
 
+    all_trunk_segments.append((x_vals, y_vals))
     return x_vals, y_vals, buds
 
-def draw_random_trunk_curve(filename="random_trunk_curve.png"):
-    x_vals, y_vals, buds = generate_feedback_trunk_with_buds()
+# === 递归主干生长 ===
+def grow_recursive_trunk(start_pos, start_angle, depth, max_depth=3):
+    if depth > max_depth:
+        return []
+    base_n = min(3, 6 - depth)
+    base_range = (15, 30) if depth > 1 else (25, 45)
+    x_vals, y_vals, buds = generate_feedback_trunk_with_buds(
+        n=base_n, start_pos=start_pos, start_angle=start_angle, length_range=base_range
+    )
+    all_buds = list(buds)
+    grow_buds = [b for b in buds if b['fate'] == 'grow']
+    for b in random.sample(grow_buds, min(2, len(grow_buds))):
+        sub_b = grow_recursive_trunk(b['pos'], b['angle'], depth + 1, max_depth)
+        all_buds += sub_b
+    return all_buds
+
+# === 主函数 ===
+def draw_random_trunk_curve(filename="recursive_trunk_tree.png"):
+    global all_trunk_segments
+    all_trunk_segments = []
+    all_buds = grow_recursive_trunk((0, 0), 90, depth=1, max_depth=1)
 
     plt.figure(figsize=(8, 8))
-    plt.plot(x_vals, y_vals, color='sienna', linewidth=2, label='Bezier Curve')
-    # 标记起点
-    plt.plot(x_vals[0], y_vals[0], marker='s', color='blue', markersize=6, label='Start Point')
+    for idx, (x, y) in enumerate(all_trunk_segments):
+        plt.plot(x, y, color='sienna', linewidth=1.5)
+    plt.plot(all_trunk_segments[0][0][0], all_trunk_segments[0][1][0], marker='s', color='blue', markersize=6, label='Start Point')
 
-    for bud in buds:
+    for bud in all_buds:
         x, y = bud['pos']
         fate = bud['fate']
         if fate == 'grow':
@@ -136,11 +215,7 @@ def draw_random_trunk_curve(filename="random_trunk_curve.png"):
     plt.tight_layout()
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"✅ Trunk curve with buds saved to {filename}")
-
-# === 主函数 ===
-def main():
-    draw_random_trunk_curve("random_trunk_with_buds.png")
+    print(f"🌲 Recursive tree saved to {filename}")
 
 if __name__ == "__main__":
-    main()
+    draw_random_trunk_curve()
