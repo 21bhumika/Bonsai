@@ -63,10 +63,15 @@ def draw_tree_with_widths(trunks, trunk_widths, branches, branch_widths, buds=No
     ax.axis('off')
 
     # 绘制 trunk
-    for (xs, ys), ws in zip(trunks, trunk_widths):
-        for i in range(1, len(xs)):
-            ax.plot([xs[i-1], xs[i]], [ys[i-1], ys[i]], color="#43371f", linewidth=ws[i-1])
+    # for (xs, ys), ws in zip(trunks, trunk_widths):
+    #     for i in range(1, len(xs)):
+    #         ax.plot([xs[i-1], xs[i]], [ys[i-1], ys[i]], color="#43371f", linewidth=ws[i-1])
 
+    for (xs, ys), ws in zip(trunks, trunk_widths):
+        segments = [([xs[i - 1], ys[i - 1]], [xs[i], ys[i]]) for i in range(1, len(xs))]
+        lc = LineCollection(segments, linewidths=ws[:-1], colors="#43371f", capstyle='round', joinstyle='round')
+        ax.add_collection(lc)
+        
     for branch, start_width in zip(branches, branch_widths):
         draw_branch_tree_recursive(branch, start_width, ax)
 
