@@ -5,21 +5,17 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 import random
 
-def draw_base(filename="bonsai_base.png", center=None):
+def draw_base(ax, center=None, color=None):
     base_type = random.choice(["cuboid", "trapezoidal", "cylinder", "curved trapezoidal", "spherical"])
     print(f"Base type selected: {base_type}")
     
     add_feet = random.random() < 0.5
-    if base_type in ["cylinder", "spherical"]:
-        draw_3D_base(filename, base_type, center)
-    else:
-        draw_flat_base(filename, base_type, add_feet, center)
+    # if base_type in ["cylinder", "spherical"]:
+    #     draw_3D_base(ax, base_type, center, color)
+    # else:
+    draw_flat_base(ax, base_type, add_feet, center, color)
 
-def draw_3D_base(filename, base_type, center=None):
-    fig = plt.figure(figsize=(6, 4))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.axis('off')
-
+def draw_3D_base(ax, base_type, center=None, color=None):
     height = random.uniform(0.5, 2.0)
     width = random.uniform(4.0, 8.0)
     depth = random.uniform(2.0, 4.0)
@@ -38,7 +34,7 @@ def draw_3D_base(filename, base_type, center=None):
 
         ax.plot_surface(
             X, Y, Z,
-            color='grey',
+            color=color,
             edgecolor='none',
             linewidth=0,
             rstride=1,
@@ -52,7 +48,7 @@ def draw_3D_base(filename, base_type, center=None):
         top_circle_y = r_top * np.sin(theta) + depth / 2
         top_circle_z = np.full_like(top_circle_x, height - 0.01)
         ax.add_collection3d(Poly3DCollection([list(zip(top_circle_x, top_circle_y, top_circle_z))],
-                                             facecolor='saddlebrown', edgecolor='none', alpha=1.0))
+                                             facecolor=color, edgecolor='none', alpha=1.0))
 
         if center is not None:
             center["x"] = width / 2
@@ -70,7 +66,7 @@ def draw_3D_base(filename, base_type, center=None):
 
         ax.plot_surface(
             X, Y, Z,
-            color='grey',
+            color=color,
             edgecolor='none',
             linewidth=0,
             rstride=1,
@@ -83,7 +79,7 @@ def draw_3D_base(filename, base_type, center=None):
         bottom_circle_y = radius * np.sin(v) + depth / 2
         bottom_circle_z = np.full_like(bottom_circle_x, 0.0)
         ax.add_collection3d(Poly3DCollection([list(zip(bottom_circle_x, bottom_circle_y, bottom_circle_z))],
-                                             facecolor='saddlebrown', edgecolor='none', alpha=1.0))
+                                             facecolor=color, edgecolor='none', alpha=1.0))
 
         if center is not None:
             center["x"] = width / 2
@@ -92,18 +88,14 @@ def draw_3D_base(filename, base_type, center=None):
     ax.set_box_aspect([width, depth, height])
     ax.view_init(elev=15, azim=0)
     ax.set_axis_off()
-    fig.patch.set_alpha(0.0)
-    ax.patch.set_alpha(0.0)
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300, transparent=True)
-    plt.close()
-    print(f"Base saved to: {filename}")
+    # fig.patch.set_alpha(0.0)
+    # ax.patch.set_alpha(0.0)
+    # plt.tight_layout()
+    # plt.savefig(filename, dpi=300, transparent=True)
+    # plt.close()
+    # print(f"Base saved to: {filename}")
 
-def draw_flat_base(filename, base_type, add_feet, center=None):
-    fig, ax = plt.subplots(figsize=(5, 4))
-    ax.set_aspect('equal')
-    ax.axis('off')
-
+def draw_flat_base(ax, base_type, add_feet, center=None, color=None):
     width = random.uniform(6, 8)
     height = random.uniform(2, 3)
     top_depth = random.uniform(0.3, 0.5)
@@ -159,7 +151,7 @@ def draw_flat_base(filename, base_type, add_feet, center=None):
                           0.5 * np.pi, np.pi, corner_radius)
         front_face.append((bottom_left[0], bottom_left[1] + corner_radius))
 
-    ax.add_patch(patches.Polygon(front_face, closed=True, facecolor="gray", edgecolor="none", linewidth=2))
+    ax.add_patch(patches.Polygon(front_face, closed=True, facecolor=color, edgecolor="none", linewidth=2))
 
     if base_type == "curved trapezoidal":
         top_left_corner = left_curve[-1]
@@ -178,7 +170,7 @@ def draw_flat_base(filename, base_type, add_feet, center=None):
     )
 
     top_face = [top_left_corner, top_right_corner, top_inner_right, top_inner_left]
-    ax.add_patch(patches.Polygon(top_face, closed=True, facecolor="#cccccc", edgecolor="none", linewidth=2))
+    ax.add_patch(patches.Polygon(top_face, closed=True, facecolor=color, edgecolor="none", linewidth=2))
 
     # Compute top center
     top_center_x = (top_left_corner[0] + top_right_corner[0]) / 2
@@ -199,13 +191,13 @@ def draw_flat_base(filename, base_type, add_feet, center=None):
             rect = patches.Rectangle(
                 (width / 2 + x_offset - foot_width / 2, base_y - foot_height),
                 foot_width, foot_height,
-                linewidth=0, facecolor='grey'
+                linewidth=0, facecolor=color
             )
             ax.add_patch(rect)
 
     ax.set_xlim(-1, width + 2)
     ax.set_ylim(-1, height + top_depth + 1)
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300, transparent=True)
-    plt.close()
-    print(f"Flat base saved to: {filename}")
+    # plt.tight_layout()
+    # plt.savefig(filename, dpi=300, transparent=True)
+    # plt.close()
+    # print(f"Flat base saved to: {filename}")

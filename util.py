@@ -28,9 +28,8 @@ def export_tree_to_json(filename, trunk_segments, buds, branch_trees=None, leave
 
     with open(filename, 'w') as f:
         json.dump(data, f, indent=2)
-    print(f"✅ Tree structure exported to {filename}")
+    print(f"Tree skeleton exported to {filename}")
 
-# === JSON 读取工具 ===
 def import_tree_from_json(filename):
     def deserialize_branch(data):
         return {

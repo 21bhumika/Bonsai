@@ -1,12 +1,10 @@
 import random
 import math
-import re
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
 from util import export_tree_to_json
 
-# === 记录所有 trunk 段与分支段 ===
 all_trunk_segments = []
 all_branch_trees = []
 all_leaves = []
@@ -28,7 +26,7 @@ def grow_branch_tree_list(start_pos, angle, depth, ratio, is_top_branch, max_dep
         current_angle = 90 + random.uniform(-20, 20)
 
     else:
-        # 分支长度随深度递减
+        # the further the shorter
         scale = 0.5 ** (depth - 1)
     
     local_step_range = (base_step * 0.5 * scale, base_step * 1.0 * scale)
@@ -107,7 +105,6 @@ def generate_trunk_curve(n=6, start_pos=(0, 0), start_angle=90, length_range=(20
     u_fine = np.linspace(0, 1, 150)
     return splev(u_fine, tck)
 
-# === 主干生成函数（支持初始位置与方向） ===
 def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, length_range=(20, 40)):
     global all_trunk_segments
 
@@ -180,7 +177,9 @@ def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, len
         buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate , 'ratio': ratio})
         if fate == 'grow':
             if random.random() < 0.8 and sub_trunk_count < sub_trunk_limit and ratio < 0.6:
-                remaining = (i / len(x_vals))  # 越靠后的 bud，越短
+                
+                # the further the shorter
+                remaining = (i / len(x_vals))  
                 sub_n = max(3, int(n * remaining * 1.5))
                 sub_x, sub_y = generate_trunk_curve(
                     n=sub_n,
@@ -217,14 +216,14 @@ def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, len
                         buds.extend(sub_buds)
                     sub_trunk_count += 1
             elif random.random() < 0.5:
-                # 双分叉
+                
+                # double fork
                 buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate, 'ratio': ratio})
 
     all_trunk_segments.append((x_vals, y_vals))
     return x_vals, y_vals, buds
 
-# === 主函数 ===
-def draw_random_trunk_curve(filename="trunk_with_branches.png"):
+def draw_random_trunk_curve(filename):
     global all_trunk_segments, all_branch_trees, all_leaves
     all_trunk_segments = []
     all_branch_trees = []
@@ -236,16 +235,12 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
     # grow branches
     for bud in all_buds:
         if bud['fate'] == 'grow':
+            
             # almost horizontal
             base_angle = bud['angle'] + random.choice([-90, 90])  # 垂线方向
             jitter = random.uniform(-40, 40)
             side_angle = base_angle + jitter
 
-            # 如果偏下太严重（如 < -30° 或 > 210°），限制为接近水平或上扬
-            # if 270 <= side_angle <= 330:
-            #     side_angle = 0 + jitter
-            # elif 210 <= side_angle < 270:
-            #     side_angle = 180 + jitter
             if 210 <= side_angle <= 340:
                 side_angle = random.randint(20, 160) + jitter
 
@@ -263,14 +258,11 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
 
     plt.figure(figsize=(8, 8))
 
-    # 绘制 trunk 骨架
     for (x, y) in all_trunk_segments:
         plt.plot(x, y, color='sienna', linewidth=1.5)
 
-    # 起点标记
-    plt.plot(all_trunk_segments[0][0][0], all_trunk_segments[0][1][0], marker='s', color='blue', markersize=6, label='Start Point')
+    plt.plot(x_vals[0], y_vals[0], marker='s', color='blue', markersize=6, label='Start Point')
 
-    # ✅ 绘制 branch 树状结构的骨架
     def draw_branch_skeleton(branch_node):
         pts = branch_node["points"]
         for i in range(1, len(pts)):
@@ -304,10 +296,10 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
     plt.axis('off')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.savefig(f"pics/ske_{str(filename)}.png", dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"🌿 Tree with branches saved to {filename}")
-    export_tree_to_json("tree.json", all_trunk_segments[::-1], all_buds[::-1], all_branch_trees[::-1], all_leaves[::-1])
+    print(f"Tree skeleton saved to {filename}")
+    export_tree_to_json(f"pics/ske_{str(filename)}.json", all_trunk_segments[::-1], all_buds[::-1], all_branch_trees[::-1], all_leaves[::-1])
     return all_trunk_segments[::-1], all_buds[::-1], all_branch_trees[::-1], all_leaves[::-1]
 
 if __name__ == "__main__":
