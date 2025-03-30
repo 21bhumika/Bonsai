@@ -4,12 +4,12 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
+from util import export_tree_to_json
 
 # === 记录所有 trunk 段与分支段 ===
 all_trunk_segments = []
 all_branch_segments = []
-all_branch_buds = []
-main_trunk = None
+all_leaves = []
 
 
 def grow_branch_recursive(start_pos, angle, depth, max_depth=3, base_step=14, angle_range=(-30, 30)):
@@ -90,7 +90,7 @@ def generate_trunk_curve(n=6, start_pos=(0, 0), start_angle=90, length_range=(20
 
 # === 主干生成函数（支持初始位置与方向） ===
 def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, length_range=(20, 40)):
-    global all_trunk_segments, main_trunk
+    global all_trunk_segments
 
     
     ctrl_x = [start_pos[0]]
@@ -206,19 +206,19 @@ def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, len
 
 # === 主函数 ===
 def draw_random_trunk_curve(filename="trunk_with_branches.png"):
-    global all_trunk_segments, all_branch_segments, all_branch_buds
+    global all_trunk_segments, all_branch_segments, all_leaves
     all_trunk_segments = []
     all_branch_segments = []
-    all_branch_buds = []
+    all_leaves = []
 
-    # 主干
+    # generate the main trunk here
     x_vals, y_vals, all_buds = generate_feedback_trunk_with_buds(n=6)
 
-    # 从部分芽点生成分支
+    # grow branches
     for bud in all_buds:
         if bud['fate'] in ('grow'):
-            # 使侧芽以接近水平角度展开（±90°）
-            # 使分支生长方向接近水平线（左右发散）
+            
+            # almost horizontal
             side_angle = random.choice([0, 180]) + random.uniform(-20, 20)
 
             segments = grow_branch_recursive(
@@ -229,11 +229,10 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
             )
             for seg in segments:
                 if seg[0] == seg[1]:
-                    all_branch_buds.append(seg[0])
+                    all_leaves.append(seg[0])
                 else:
                     all_branch_segments.append(seg)
 
-    # 绘图
     plt.figure(figsize=(8, 8))
     for (x, y) in all_trunk_segments:
         plt.plot(x, y, color='sienna', linewidth=1.5)
@@ -243,7 +242,6 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
     for (x0, y0), (x1, y1) in all_branch_segments:
         plt.plot([x0, x1], [y0, y1], color='peru', linewidth=1)
 
-    # 标注所有芽点
     for bud in all_buds:
         x, y = bud['pos']
         fate = bud['fate']
@@ -256,7 +254,7 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
         elif fate == 'abort':
             plt.plot(x, y, marker='x', color='black', markersize=2)
 
-    for bx, by in all_branch_buds:
+    for bx, by in all_leaves:
         plt.plot(bx, by, marker='.', color='green', markersize=3)
 
     plt.axis('equal')
@@ -266,6 +264,8 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"🌿 Tree with branches saved to {filename}")
+    export_tree_to_json("tree.json", all_trunk_segments, all_buds, all_branch_segments, all_leaves)
+
 
 if __name__ == "__main__":
     draw_random_trunk_curve()
