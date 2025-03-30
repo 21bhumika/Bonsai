@@ -1,11 +1,8 @@
-
-
 import math
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import colorsys
 from noise import pnoise2
 from math import pi as PI
 
@@ -24,7 +21,7 @@ def sigmoid(x, coeff):
 def noise(x, seed):
     return pnoise2(x, seed)
 
-def gen_params(leaf_palette=None):
+def gen_params(flower_color="#ff69b4", alpha=0.7):
     PAR = {}
 
     randint = lambda x, y: math.floor(norm_rand(x, y))
@@ -32,7 +29,6 @@ def gen_params(leaf_palette=None):
     sin = math.sin
 
     def flower_shape_mask(x):
-        #return pow(sin(PI * x), 0.2)
         return math.pow(math.sin(PI * x), 0.2)
 
     PAR['flowerChance'] = rand_choice([norm_rand(0, 0.08), norm_rand(0, 0.03)])
@@ -46,30 +42,9 @@ def gen_params(leaf_palette=None):
         return noise(x * flower_jaggedness, flower_shape_noise_seed) * flower_shape_mask(x)
 
     PAR['flowerShape'] = flower_shape
-    
-    if leaf_palette:
-        hex_color = random.choice(leaf_palette)
-        r, g, b = mcolors.to_rgb(hex_color)
-        h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        flower_hue0 = (h * 360 + random.uniform(-20, 20)) % 360
-        flower_hue1 = (flower_hue0 * 0.8 + random.uniform(-40, 40)) % 360
-        brightness_scale = 0.6
-        flower_value0 = min(1, v * brightness_scale)
-        flower_value1 = min(1, random.uniform(0.2, 0.6) * brightness_scale)
-        flower_saturation0 = min(1, s + random.uniform(-0.3, 0.3))
-        flower_saturation1 = min(1, random.uniform(0, 1.1 - flower_value1))
-    else:
-        flower_hue0 = (norm_rand(0, 180) - 130 + 360) % 360
-        flower_hue1 = int((flower_hue0*0.5 + norm_rand(-70, 70) + 360) % 360)
-        brightness_scale = 0.6
-        flower_value0 = min(1, norm_rand(0.8, 1.0) * brightness_scale)
-        flower_value1 = min(1, norm_rand(0.2, 0.6) * brightness_scale)
-        flower_saturation0 = norm_rand(0, 1.1 - flower_value0)
-        flower_saturation1 = norm_rand(0, 1.1 - flower_value1)
-
     PAR['flowerColor'] = {
-        'min': [flower_hue0, flower_saturation0, flower_value0, norm_rand(0.8, 1)],
-        'max': [flower_hue1, flower_saturation1, flower_value1, norm_rand(0.5, 1)]
+        'rgb': mcolors.to_rgb(flower_color),
+        'alpha': alpha
     }
 
     curve_coeff0 = [norm_rand(-0.5, 0.5), norm_rand(5, 10)]
@@ -94,9 +69,6 @@ def gen_params(leaf_palette=None):
 
     return PAR
 
-def hsv_to_rgb(h, s, v):
-    return tuple(round(i * 255) for i in plt.cm.hsv(h/360)[:3])
-
 def draw_flower(PAR, filename="flower.png"):
     shape_func = PAR['flowerShape']
     petal_count = PAR['flowerPetal']
@@ -113,9 +85,9 @@ def draw_flower(PAR, filename="flower.png"):
         x = r * np.cos(theta)
         y = r * np.sin(theta)
 
-        # Optional: use fixed or random petal color
-        rgb = hsv_to_rgb(*PAR['flowerColor']['min'][:3])
-        ax.fill(x, y, color=np.array(rgb)/255, alpha=PAR['flowerColor']['min'][3])
+        rgb = PAR['flowerColor']['rgb']
+        alpha = PAR['flowerColor']['alpha']
+        ax.fill(x, y, color=rgb, alpha=alpha)
 
     ax.set_aspect('equal')
     ax.axis('off')
@@ -123,8 +95,6 @@ def draw_flower(PAR, filename="flower.png"):
     plt.savefig(filename, dpi=300)
     plt.close()
     print(f"Saved flower image to: {filename}")
-
-
 
 def draw_flower_at(ax, x, y, angle, PAR, scale=1.0):
     shape_func = PAR['flowerShape']
@@ -144,5 +114,6 @@ def draw_flower_at(ax, x, y, angle, PAR, scale=1.0):
         x_rot = x_pts * np.cos(np.radians(angle)) - y_pts * np.sin(np.radians(angle))
         y_rot = x_pts * np.sin(np.radians(angle)) + y_pts * np.cos(np.radians(angle))
 
-        rgb = hsv_to_rgb(*PAR['flowerColor']['min'][:3])
-        ax.fill(x + x_rot, y + y_rot, color=np.array(rgb)/255, alpha=PAR['flowerColor']['min'][3])
+        rgb = PAR['flowerColor']['rgb']
+        alpha = PAR['flowerColor']['alpha']
+        ax.fill(x + x_rot, y + y_rot, color=rgb, alpha=alpha)

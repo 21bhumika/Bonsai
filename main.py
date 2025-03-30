@@ -33,17 +33,16 @@ def draw_flowers_canopy(ax, center, width, height, leaf_color, flower_count=12):
 
     for _ in range(flower_count):
         while True:
-            x = np.random.uniform(cx - width / 2, cx + width / 2)
-            y = np.random.uniform(cy - height / 2, cy + height / 2)
+            x = np.random.uniform(cx - width / 2.5, cx + width / 2.5)
+            y = np.random.uniform(cy - height / 2.5, cy + height / 2.5)
             if ((x - cx) / (width / 2))**2 + ((y - cy) / (height / 2))**2 <= 1:
                 break
 
         angle = np.random.uniform(0, 360)
-        scale = np.random.uniform(2.2, 3.0)  
-        PAR = gen_params(leaf_palette=leaf_color)
-
-        # More solid opacity
-        PAR["flowerColor"]["min"][3] = np.random.uniform(0.65, 0.85)
+        scale = np.random.uniform(2.2, 3.0) 
+        color = random.choice(leaf_color)
+        alpha = np.random.uniform(0.45, 0.65)
+        PAR = gen_params(flower_color=color, alpha=alpha)
 
         draw_flower_at(ax, x, y, angle, PAR, scale=scale)
 
@@ -83,8 +82,7 @@ def collect_leaf_positions(buds, branch_trees):
 
 def draw_flowers_at_leaves(ax, leaf_positions, leaf_color):
     for (x, y) in leaf_positions:
-        draw_flowers_canopy(ax, (x, y), width=60, height=25, leaf_color=leaf_color, flower_count=50)
-
+        draw_flowers_canopy(ax, (x, y), width=60, height=25, leaf_color=leaf_color, flower_count=10)
 
 
 from matplotlib.patches import Ellipse
@@ -92,13 +90,6 @@ from matplotlib.patches import Ellipse
 def draw_elliptical_leaves(ax, leaf_positions, leaf_color):
     for (x, y) in leaf_positions:
         draw_tree_canopy(ax, (x, y), width=60, height=25, leaf_color=leaf_color, leaf_count=50)
-
-def draw_flowers_at_leaves(ax, leaf_positions, leaf_color):
-    for (x, y) in leaf_positions:
-        PAR = gen_params(leaf_palette=leaf_color)
-        angle = random.uniform(0, 360)
-        draw_flower_at(ax, x, y, angle, PAR, scale=0.7)
-
 
 def assign_path_widths(trunks, branch_trees, trunk_main_width=50, trunk_min_width=1):
     trunk_widths = []
@@ -176,11 +167,10 @@ def draw_tree_with_widths(trunks, trunk_widths, branches, branch_widths, buds=No
 
 if __name__ == "__main__":
     for i in range(50):
+        use_flowers = random.random() < 0.5
         os.makedirs("pics", exist_ok=True)
         cur_trunk_color, cur_leaf_color, cur_pot_color = \
             random.choice(trunk_colors), random.choice(leaves_colors), random.choice(plant_pot_colors)
         trunks, buds, branches, leaves = draw_random_trunk_curve(i)
         trunk_width, branch_width = assign_path_widths(trunks, branches, trunk_main_width=60)
-        draw_tree_with_widths(trunks, trunk_width, branches, branch_width, buds=buds, leaves=leaves, filename=f"pics/{str(i)}.png", trunk_color=cur_trunk_color, leaf_color=cur_leaf_color, pot_color=cur_pot_color)
-
-The cluster/canopy ios already implemented, I just want to replace leaf with flower
+        draw_tree_with_widths(trunks, trunk_width, branches, branch_width, buds=buds, leaves=leaves, filename=f"pics/{str(i)}.png", trunk_color=cur_trunk_color, leaf_color=cur_leaf_color, pot_color=cur_pot_color, use_flowers=use_flowers)
