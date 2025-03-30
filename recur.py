@@ -8,44 +8,63 @@ from util import export_tree_to_json
 
 # === 记录所有 trunk 段与分支段 ===
 all_trunk_segments = []
-all_branch_segments = []
+all_branch_trees = []
 all_leaves = []
 
 
-def grow_branch_recursive(start_pos, angle, depth, max_depth=3, base_step=14, angle_range=(-30, 30)):
+def grow_branch_tree_list(start_pos, angle, depth, ratio, is_top_branch, max_depth=3, base_step=14, angle_range=(-30, 30)):
     if depth > max_depth:
-        return []
+        return None
 
     x, y = start_pos
     current_angle = angle
-    segments = []
-    buds = []
+    points = [(x, y)]
+    is_crown = False
+    if is_top_branch and ratio > 0.75: 
+        
+        # crown type
+        scale = 0.1
+        is_crown = True
+        current_angle = 90 + random.uniform(-20, 20)
 
-    # 让分支长度随深度递减（例如指数衰减）
-    scale = 0.5 ** (depth - 1)
+    else:
+        # 分支长度随深度递减
+        scale = 0.5 ** (depth - 1)
+    
     local_step_range = (base_step * 0.5 * scale, base_step * 1.0 * scale)
 
-    n_segments = random.randint(2, 4)
-    for i in range(n_segments):
+    n_segments = random.randint(2, 4) if not is_crown else 1
+    for _ in range(n_segments):
         step = random.uniform(*local_step_range)
         rad = math.radians(current_angle)
-        x_new = x + step * math.cos(rad)
-        y_new = y + step * math.sin(rad)
-        segments.append(((x, y), (x_new, y_new)))
-
-        # 更密集生长子分支，末端可能分裂
-        if depth < max_depth and (i >= n_segments - 2 or random.random() < 0.3):
-            branch_count = random.randint(1, 2)
-            for _ in range(branch_count):
-                branch_angle = current_angle + random.uniform(*angle_range)
-                sub_segments = grow_branch_recursive((x_new, y_new), branch_angle, depth + 1, max_depth, base_step, angle_range)
-                segments.extend(sub_segments)
-
-        x, y = x_new, y_new
+        x += step * math.cos(rad)
+        y += step * math.sin(rad)
+        points.append((x, y))
         current_angle += random.uniform(-10, 10)
 
-    buds.append((x, y))
-    return segments + [(b, b) for b in buds]
+    node = {
+        "points": [[float(px), float(py)] for px, py in points],
+        "children": []
+    }
+
+    for i in range(len(points) - 2, len(points)):
+        if depth < max_depth and (i == len(points) - 1 or random.random() < 0.3):
+            if is_crown:
+                branch_count = random.randint(2, 3)
+            else:
+                branch_count = random.randint(1, 2)
+
+            
+            for _ in range(branch_count):
+                if is_crown:
+                    branch_angle = random.randint(0, 180) + random.uniform(*angle_range)
+                else:
+                    branch_angle = current_angle + random.uniform(*angle_range)
+                child = grow_branch_tree_list(points[i], branch_angle, depth + 1, 0, False, max_depth, base_step, angle_range)
+                if child:
+                    node["children"].append(child)
+
+    return node
 
 def generate_trunk_curve(n=6, start_pos=(0, 0), start_angle=90, length_range=(20, 40)):
     ctrl_x = [start_pos[0]]
@@ -149,7 +168,7 @@ def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, len
         angle = math.degrees(math.atan2(dy, dx))
 
         fate = None
-        ratio = i / len(x_vals)
+        ratio = float(i / len(x_vals))
         if grow_count < grow_limit:
             if last_grow_pos is None or last_grow_pos - i >= min_dist_between_grows:
                 if random.random() < 0.6:
@@ -158,7 +177,7 @@ def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, len
                     last_grow_pos = i
         fate = random.choices(['flower', 'dormant', 'abort'], [0.1, 0.7, 0.2])[0] if fate == None else fate
             
-        buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate })
+        buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate , 'ratio': ratio})
         if fate == 'grow':
             if random.random() < 0.8 and sub_trunk_count < sub_trunk_limit and ratio < 0.6:
                 remaining = (i / len(x_vals))  # 越靠后的 bud，越短
@@ -193,22 +212,22 @@ def generate_feedback_trunk_with_buds(n=6, start_pos=(0, 0), start_angle=90, len
                                         sub_grow_count += 1
                                         last_sub_grow_pos = j
                             sub_fate = random.choices(['flower', 'dormant', 'abort'], [0.1, 0.7, 0.2])[0] if sub_fate is None else sub_fate
-                            sub_buds.append({ 'pos': (sx, sy), 'angle': s_angle, 'fate': sub_fate })
+                            sub_buds.append({ 'pos': (sx, sy), 'angle': s_angle, 'fate': sub_fate, 'ratio': float(j / len(sub_x))})
 
                         buds.extend(sub_buds)
                     sub_trunk_count += 1
             elif random.random() < 0.5:
                 # 双分叉
-                buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate })
+                buds.append({ 'pos': (x, y), 'angle': angle, 'fate': fate, 'ratio': ratio})
 
     all_trunk_segments.append((x_vals, y_vals))
     return x_vals, y_vals, buds
 
 # === 主函数 ===
 def draw_random_trunk_curve(filename="trunk_with_branches.png"):
-    global all_trunk_segments, all_branch_segments, all_leaves
+    global all_trunk_segments, all_branch_trees, all_leaves
     all_trunk_segments = []
-    all_branch_segments = []
+    all_branch_trees = []
     all_leaves = []
 
     # generate the main trunk here
@@ -216,31 +235,55 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
 
     # grow branches
     for bud in all_buds:
-        if bud['fate'] in ('grow'):
-            
+        if bud['fate'] == 'grow':
             # almost horizontal
-            side_angle = random.choice([0, 180]) + random.uniform(-20, 20)
+            base_angle = bud['angle'] + random.choice([-90, 90])  # 垂线方向
+            jitter = random.uniform(-40, 40)
+            side_angle = base_angle + jitter
 
-            segments = grow_branch_recursive(
+            # 如果偏下太严重（如 < -30° 或 > 210°），限制为接近水平或上扬
+            # if 270 <= side_angle <= 330:
+            #     side_angle = 0 + jitter
+            # elif 210 <= side_angle < 270:
+            #     side_angle = 180 + jitter
+            if 210 <= side_angle <= 340:
+                side_angle = random.randint(20, 160) + jitter
+
+            branch_tree = grow_branch_tree_list(
                 start_pos=bud['pos'],
                 angle=side_angle,
                 depth=1,
-                max_depth=3
+                max_depth=3,
+                ratio=bud['ratio'],
+                is_top_branch=True
             )
-            for seg in segments:
-                if seg[0] == seg[1]:
-                    all_leaves.append(seg[0])
-                else:
-                    all_branch_segments.append(seg)
+            if branch_tree:
+                all_branch_trees.append(branch_tree)
+
 
     plt.figure(figsize=(8, 8))
+
+    # 绘制 trunk 骨架
     for (x, y) in all_trunk_segments:
         plt.plot(x, y, color='sienna', linewidth=1.5)
-    plt.plot(all_trunk_segments[0][0][0], all_trunk_segments[0][1][0], marker='s', color='blue', markersize=6, label='Start Point')
-    plt.plot(x_vals[0], y_vals[0], marker='s', color='blue', markersize=6, label='Start Point')
 
-    for (x0, y0), (x1, y1) in all_branch_segments:
-        plt.plot([x0, x1], [y0, y1], color='peru', linewidth=1)
+    # 起点标记
+    plt.plot(all_trunk_segments[0][0][0], all_trunk_segments[0][1][0], marker='s', color='blue', markersize=6, label='Start Point')
+
+    # ✅ 绘制 branch 树状结构的骨架
+    def draw_branch_skeleton(branch_node):
+        pts = branch_node["points"]
+        for i in range(1, len(pts)):
+            x0, y0 = pts[i-1]
+            x1, y1 = pts[i]
+            plt.plot([x0, x1], [y0, y1], color='peru', linewidth=1)
+
+        for child in branch_node.get("children", []):
+            draw_branch_skeleton(child)
+
+    for tree in all_branch_trees:
+        draw_branch_skeleton(tree)
+
 
     for bud in all_buds:
         x, y = bud['pos']
@@ -264,8 +307,8 @@ def draw_random_trunk_curve(filename="trunk_with_branches.png"):
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"🌿 Tree with branches saved to {filename}")
-    export_tree_to_json("tree.json", all_trunk_segments, all_buds, all_branch_segments, all_leaves)
-
+    export_tree_to_json("tree.json", all_trunk_segments[::-1], all_buds[::-1], all_branch_trees[::-1], all_leaves[::-1])
+    return all_trunk_segments[::-1], all_buds[::-1], all_branch_trees[::-1], all_leaves[::-1]
 
 if __name__ == "__main__":
     draw_random_trunk_curve()

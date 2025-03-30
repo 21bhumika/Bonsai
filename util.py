@@ -1,7 +1,13 @@
 import json
 import numpy as np
 
-def export_tree_to_json(filename, trunk_segments, buds, branch_segments=None, branch_leaves=None):
+def export_tree_to_json(filename, trunk_segments, buds, branch_trees=None, leaves=None):
+    def serialize_branch(node):
+        return {
+            "points": node["points"],
+            "children": [serialize_branch(child) for child in node["children"]]
+        }
+
     data = {
         "trunk": [
             {"points": [[float(x), float(y)] for x, y in zip(xs, ys)]}
@@ -12,47 +18,35 @@ def export_tree_to_json(filename, trunk_segments, buds, branch_segments=None, br
             for b in buds
         ]
     }
-    if branch_segments is not None:
-        data["branches"] = [
-            {"segments": [[float(x0), float(y0)], [float(x1), float(y1)]]}
-            for (x0, y0), (x1, y1) in branch_segments
-        ]
-    if branch_leaves is not None:
-        data["branch_leaves"] = [
-            {"pos": [float(x), float(y)]} for x, y in branch_leaves
+    if branch_trees is not None:
+        data["branches"] = [serialize_branch(tree) for tree in branch_trees]
+
+    if leaves is not None:
+        data["leaves"] = [
+            {"pos": [float(x), float(y)]} for x, y in leaves
         ]
 
     with open(filename, 'w') as f:
         json.dump(data, f, indent=2)
-    print(f"Tree structure exported to {filename}")
+    print(f"✅ Tree structure exported to {filename}")
 
+# === JSON 读取工具 ===
 def import_tree_from_json(filename):
+    def deserialize_branch(data):
+        return {
+            "points": data["points"],
+            "children": [deserialize_branch(child) for child in data.get("children", [])]
+        }
+
     with open(filename, 'r') as f:
         data = json.load(f)
 
     trunk_segments = [
-        (np.array([p[0] for p in trunk["points"]]), np.array([p[1] for p in trunk["points"]]))
-        for trunk in data.get("trunk", [])
+        (np.array([pt[0] for pt in seg["points"]]), np.array([pt[1] for pt in seg["points"]]))
+        for seg in data["trunk"]
     ]
+    buds = data.get("buds", [])
+    leaves = [(leaf["pos"][0], leaf["pos"][1]) for leaf in data.get("leaves", [])]
+    branch_trees = [deserialize_branch(tree) for tree in data.get("branches", [])]
 
-    buds = [
-        {
-            "pos": tuple(bud["pos"]),
-            "angle": bud["angle"],
-            "fate": bud["fate"]
-        }
-        for bud in data.get("buds", [])
-    ]
-
-    branches = [
-        (tuple(seg["segments"][0]), tuple(seg["segments"][1]))
-        for seg in data.get("branches", [])
-    ] if "branches" in data else []
-
-    leaves = [
-        tuple(leaf["pos"])
-        for leaf in data.get("leaves", [])
-    ] if "leaves" in data else []
-
-    print(f"Tree structure loaded from {filename}")
-    return trunk_segments[::-1], buds[::-1], branches[::-1], leaves[::-1]
+    return trunk_segments, buds, branch_trees, leaves
