@@ -1,10 +1,11 @@
+
 import math
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 from noise import pnoise2
 from math import pi as PI
-from mpl_toolkits.mplot3d import Axes3D 
+
 def norm_rand(min_val, max_val):
     return random.uniform(min_val, max_val)
 
@@ -81,36 +82,27 @@ def gen_params():
 def hsv_to_rgb(h, s, v):
     return tuple(round(i * 255) for i in plt.cm.hsv(h/360)[:3])
 
-
-def draw_flower(PAR, filename="flower_3d.png", elev=30, azim=45):
+def draw_flower(PAR, filename="flower.png"):
     shape_func = PAR['flowerShape']
     petal_count = PAR['flowerPetal']
 
-    fig = plt.figure(figsize=(6, 6))
-    ax = fig.add_subplot(111, projection='3d')
-
     angles = np.linspace(0, 2 * np.pi, 100)
-    radial = np.linspace(0, 1, 100)
-    
+    fig, ax = plt.subplots(figsize=(5, 5))
+
     for i in range(petal_count):
         offset = 2 * np.pi * i / petal_count
-        r = np.array([shape_func(x) for x in radial])
-        r = r / np.max(r)
-        r = 1 + 0.6 * r  # Scale petals outward
-
+        r = np.array([shape_func(x) for x in np.linspace(0, 1, 100)])
+        r = r / np.max(r)  
+        r = 1 + 0.6 * r 
         theta = angles + offset
         x = r * np.cos(theta)
         y = r * np.sin(theta)
 
-        z = np.sin(radial * np.pi)  # dome-like curve
-        z = np.tile(z, (len(x) // len(z)))  # repeat to match points
-        z = z[:len(x)] * norm_rand(0.1, 0.3) * PAR['flowerLength'] / 50  # scaled height
-
+        # Optional: use fixed or random petal color
         rgb = hsv_to_rgb(*PAR['flowerColor']['min'][:3])
-        ax.plot_trisurf(x, y, z, color=np.array(rgb) / 255, alpha=PAR['flowerColor']['min'][3], linewidth=0.1)
+        ax.fill(x, y, color=np.array(rgb)/255, alpha=PAR['flowerColor']['min'][3])
 
-    ax.view_init(elev=elev, azim=azim)
-    ax.set_box_aspect([1,1,0.5])  # squash z a bit for better view
+    ax.set_aspect('equal')
     ax.axis('off')
     plt.tight_layout()
     plt.savefig(filename, dpi=300)
