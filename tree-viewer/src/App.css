@@ -1,0 +1,21 @@
+.app {
+  text-align: center;
+  font-family: 'Segoe UI', sans-serif;
+  padding: 2rem;
+  background-color: #f7f7f7;
+  min-height: 100vh;
+}
+
+button {
+  padding: 12px 24px;
+  font-size: 18px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #999;
+}
