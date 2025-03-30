@@ -7,6 +7,7 @@ from matplotlib.collections import LineCollection
 from colors import trunk_colors, leaves_colors, plant_pot_colors
 from pot import draw_plant_pot
 from recur import draw_random_trunk_curve
+from flower import gen_params, draw_flower_at
 
 
 def draw_tree_canopy(ax, center, width, height, leaf_color, leaf_count=200):
@@ -26,6 +27,25 @@ def draw_tree_canopy(ax, center, width, height, leaf_color, leaf_count=200):
         leaf = Ellipse((x, y), width=leaf_width, height=leaf_height, angle=angle,
                        color=random.choice(leaf_color), alpha=0.8)
         ax.add_patch(leaf)
+
+def draw_flowers_canopy(ax, center, width, height, leaf_color, flower_count=12):
+    cx, cy = center
+
+    for _ in range(flower_count):
+        while True:
+            x = np.random.uniform(cx - width / 2, cx + width / 2)
+            y = np.random.uniform(cy - height / 2, cy + height / 2)
+            if ((x - cx) / (width / 2))**2 + ((y - cy) / (height / 2))**2 <= 1:
+                break
+
+        angle = np.random.uniform(0, 360)
+        scale = np.random.uniform(2.2, 3.0)  
+        PAR = gen_params(leaf_palette=leaf_color)
+
+        # More solid opacity
+        PAR["flowerColor"]["min"][3] = np.random.uniform(0.65, 0.85)
+
+        draw_flower_at(ax, x, y, angle, PAR, scale=scale)
 
 def generate_leaf_cluster(center, count=4, radius=6, size_range=(5, 7), aspect_ratio=0.5):
     cx, cy = center
@@ -61,12 +81,23 @@ def collect_leaf_positions(buds, branch_trees):
 
     return leaf_positions
 
+def draw_flowers_at_leaves(ax, leaf_positions, leaf_color):
+    for (x, y) in leaf_positions:
+        draw_flowers_canopy(ax, (x, y), width=60, height=25, leaf_color=leaf_color, flower_count=50)
+
+
 
 from matplotlib.patches import Ellipse
 
 def draw_elliptical_leaves(ax, leaf_positions, leaf_color):
     for (x, y) in leaf_positions:
         draw_tree_canopy(ax, (x, y), width=60, height=25, leaf_color=leaf_color, leaf_count=50)
+
+def draw_flowers_at_leaves(ax, leaf_positions, leaf_color):
+    for (x, y) in leaf_positions:
+        PAR = gen_params(leaf_palette=leaf_color)
+        angle = random.uniform(0, 360)
+        draw_flower_at(ax, x, y, angle, PAR, scale=0.7)
 
 
 def assign_path_widths(trunks, branch_trees, trunk_main_width=50, trunk_min_width=1):
@@ -112,7 +143,8 @@ def draw_branch_tree_recursive(branch_node, start_width, ax, color, decay=0.7):
         draw_branch_tree_recursive(child, child_start_width, ax, decay=decay, color=color)
 
 
-def draw_tree_with_widths(trunks, trunk_widths, branches, branch_widths, buds=None, leaves=None, filename="tree_filled.png", trunk_color=["#43371f"], leaf_color=["#558172", "#96c49f"], pot_color=["4f4c5d"]):
+use_flowers = random.random() < 0.5 
+def draw_tree_with_widths(trunks, trunk_widths, branches, branch_widths, buds=None, leaves=None, filename="tree_filled.png", trunk_color=["#43371f"], leaf_color=["#558172", "#96c49f"], pot_color=["4f4c5d"], use_flowers=use_flowers):
     _, ax = plt.subplots(figsize=(10, 10))
     ax.set_aspect('equal')
     ax.axis('off')
@@ -132,7 +164,10 @@ def draw_tree_with_widths(trunks, trunk_widths, branches, branch_widths, buds=No
         draw_branch_tree_recursive(branch, start_width, ax, color=selected_trunk_color)
 
     leaf_pos = collect_leaf_positions(buds, branches)
-    draw_elliptical_leaves(ax, leaf_pos, leaf_color)
+    if use_flowers:
+        draw_flowers_at_leaves(ax, leaf_pos, leaf_color)
+    else:
+        draw_elliptical_leaves(ax, leaf_pos, leaf_color)
 
     plt.tight_layout()
     plt.savefig(filename, dpi=300, bbox_inches='tight')
@@ -147,3 +182,5 @@ if __name__ == "__main__":
         trunks, buds, branches, leaves = draw_random_trunk_curve(i)
         trunk_width, branch_width = assign_path_widths(trunks, branches, trunk_main_width=60)
         draw_tree_with_widths(trunks, trunk_width, branches, branch_width, buds=buds, leaves=leaves, filename=f"pics/{str(i)}.png", trunk_color=cur_trunk_color, leaf_color=cur_leaf_color, pot_color=cur_pot_color)
+
+The cluster/canopy ios already implemented, I just want to replace leaf with flower
