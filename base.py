@@ -35,22 +35,39 @@ def draw_3D_base(filename, base_type):
 
         R = np.linspace(r_bot, r_top, len(z))
         R = np.tile(R, (len(theta), 1))
-        X = R * np.cos(Theta)
-        Y = R * np.sin(Theta)
+        X = R * np.cos(Theta) + width / 2    # shift X to [0, width]
+        Y = R * np.sin(Theta) + depth / 2    # shift Y to [0, depth]
 
         ax.plot_surface(X, Y, Z, color='gray', edgecolor='none', linewidth=0, alpha=1.0)
 
+        # Draw top face
+        top_circle_x = r_top * np.cos(theta) + width / 2
+        top_circle_y = r_top * np.sin(theta) + depth / 2
+        top_circle_z = np.full_like(top_circle_x, height)
+        ax.add_collection3d(Poly3DCollection([list(zip(top_circle_x, top_circle_y, top_circle_z))],
+                                             facecolor='gray', edgecolor='black', alpha=1.0))
+
+        center_top = (width / 2, depth / 2, height)
+
     elif base_type == "spherical":
-        # Half sphere (hemisphere)
-        u = np.linspace(np.pi/2, np.pi, 30)    
-        v = np.linspace(0, 2*np.pi, 30)   
         radius = width / 2
+        u = np.linspace(np.pi / 2, np.pi, 30)
+        v = np.linspace(0, 2 * np.pi, 30)
         U, V = np.meshgrid(u, v)
-        X = radius * np.sin(U) * np.cos(V)
-        Y = radius * np.sin(U) * np.sin(V)
+
+        X = radius * np.sin(U) * np.cos(V) + width / 2
+        Y = radius * np.sin(U) * np.sin(V) + depth / 2
         Z = radius * np.cos(U)
 
         ax.plot_surface(X, Y, Z, color='gray', edgecolor='none', alpha=1.0)
+
+        bottom_circle_x = radius * np.cos(v) + width / 2
+        bottom_circle_y = radius * np.sin(v) + depth / 2
+        bottom_circle_z = np.full_like(bottom_circle_x, 0.0)
+        ax.add_collection3d(Poly3DCollection([list(zip(bottom_circle_x, bottom_circle_y, bottom_circle_z))],
+                                             facecolor='gray', edgecolor='black', alpha=1.0))
+
+        center_top = (width / 2, depth / 2)
 
     ax.set_box_aspect([width, depth, height])
     ax.view_init(elev=15, azim=0)
@@ -61,6 +78,9 @@ def draw_3D_base(filename, base_type):
     plt.savefig(filename, dpi=300, transparent=True)
     plt.close()
     print(f"Base saved to: {filename}")
+    return center_top
+
+
 
 
 def draw_flat_base(filename, base_type, add_feet):
@@ -172,6 +192,10 @@ def draw_flat_base(filename, base_type, add_feet):
                 linewidth=0, facecolor='grey'
             )
             ax.add_patch(rect)
+        
+
+        top_center_x = (top_left_corner[0] + top_right_corner[0]) / 2
+        top_center_y = (top_left_corner[1] + top_inner_left[1]) / 2
 
     ax.set_xlim(-1, width + 2)
     ax.set_ylim(-1, height + top_depth + 1)
@@ -179,4 +203,6 @@ def draw_flat_base(filename, base_type, add_feet):
     plt.savefig(filename, dpi=300, transparent=True)
     plt.close()
     print(f"Flat base saved to: {filename}")
+    return (top_center_x, top_center_y)
+
 
