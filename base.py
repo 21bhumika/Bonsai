@@ -29,8 +29,8 @@ def draw_3D_base(filename, base_type):
     if base_type == "cylinder":
         r_top = random.uniform(0.5, 1.0) * (width / 2)
         r_bot = width / 2
-        z = np.linspace(0, height, 30)
-        theta = np.linspace(0, 2 * np.pi, 50)
+        z = np.linspace(0, height, 100)
+        theta = np.linspace(0, 2 * np.pi, 200)
         Z, Theta = np.meshgrid(z, theta)
 
         R = np.linspace(r_bot, r_top, len(z))
@@ -38,34 +38,52 @@ def draw_3D_base(filename, base_type):
         X = R * np.cos(Theta) + width / 2    # shift X to [0, width]
         Y = R * np.sin(Theta) + depth / 2    # shift Y to [0, depth]
 
-        ax.plot_surface(X, Y, Z, color='gray', edgecolor='none', linewidth=0, alpha=1.0)
+        ax.plot_surface(
+            X, Y, Z,
+            color='grey',
+            edgecolor='none',
+            linewidth=0,
+            rstride=1,
+            cstride=1,
+            antialiased=False,
+            shade=False
+        )
 
         # Draw top face
         top_circle_x = r_top * np.cos(theta) + width / 2
         top_circle_y = r_top * np.sin(theta) + depth / 2
-        top_circle_z = np.full_like(top_circle_x, height)
+        top_circle_z = np.full_like(top_circle_x, height - 0.01)
         ax.add_collection3d(Poly3DCollection([list(zip(top_circle_x, top_circle_y, top_circle_z))],
-                                             facecolor='gray', edgecolor='black', alpha=1.0))
+                                             facecolor='saddlebrown', edgecolor='none', alpha=1.0))
 
         center_top = (width / 2, depth / 2, height)
 
     elif base_type == "spherical":
         radius = width / 2
-        u = np.linspace(np.pi / 2, np.pi, 30)
-        v = np.linspace(0, 2 * np.pi, 30)
+        u = np.linspace(np.pi / 2, np.pi, 100)
+        v = np.linspace(0, 2 * np.pi, 200)
         U, V = np.meshgrid(u, v)
 
         X = radius * np.sin(U) * np.cos(V) + width / 2
         Y = radius * np.sin(U) * np.sin(V) + depth / 2
         Z = radius * np.cos(U)
 
-        ax.plot_surface(X, Y, Z, color='gray', edgecolor='none', alpha=1.0)
+        ax.plot_surface(
+            X, Y, Z,
+            color='grey',
+            edgecolor='none',
+            linewidth=0,
+            rstride=1,
+            cstride=1,
+            antialiased=False,
+            shade=False
+        )
 
         bottom_circle_x = radius * np.cos(v) + width / 2
         bottom_circle_y = radius * np.sin(v) + depth / 2
         bottom_circle_z = np.full_like(bottom_circle_x, 0.0)
         ax.add_collection3d(Poly3DCollection([list(zip(bottom_circle_x, bottom_circle_y, bottom_circle_z))],
-                                             facecolor='gray', edgecolor='black', alpha=1.0))
+                                             facecolor='saddlebrown', edgecolor='none', alpha=1.0, shade = False))
 
         center_top = (width / 2, depth / 2)
 
@@ -144,7 +162,7 @@ def draw_flat_base(filename, base_type, add_feet):
                           0.5 * np.pi, np.pi, corner_radius)
         front_face.append((bottom_left[0], bottom_left[1] + corner_radius))
 
-    ax.add_patch(patches.Polygon(front_face, closed=True, facecolor="gray", edgecolor="black", linewidth=2))
+    ax.add_patch(patches.Polygon(front_face, closed=True, facecolor="gray", edgecolor="none", linewidth=2))
 
     # TOP FACE
     if base_type == "curved trapezoidal":
@@ -177,7 +195,7 @@ def draw_flat_base(filename, base_type, add_feet):
             top_inner_left
         ]
 
-    ax.add_patch(patches.Polygon(top_face, closed=True, facecolor="#cccccc", edgecolor="black", linewidth=2))
+    ax.add_patch(patches.Polygon(top_face, closed=True, facecolor="#cccccc", edgecolor="none", linewidth=2))
 
     if add_feet:
         foot_width = width * 0.15
