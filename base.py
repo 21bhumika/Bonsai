@@ -9,12 +9,13 @@ def draw_base(filename="bonsai_base.png"):
     base_type = random.choice(["cuboid", "trapezoidal", "cylinder", "curved trapezoidal", "spherical"])
     print(f"Base type selected: {base_type}")
     
+    add_feet = random.random() < 0.5
     if base_type == "cylinder":
         draw_3D_base(filename, base_type)
     elif base_type == "spherical":
         draw_3D_base(filename, base_type)
     else:
-        draw_flat_base(filename, base_type)
+        draw_flat_base(filename, base_type, add_feet)
 
 def draw_3D_base(filename, base_type):
     fig = plt.figure(figsize=(6, 4))
@@ -41,9 +42,8 @@ def draw_3D_base(filename, base_type):
 
     elif base_type == "spherical":
         # Half sphere (hemisphere)
-        u = np.linspace(np.pi/2, np.pi, 30)     # polar angle from 0 to pi
-        v = np.linspace(0, 2*np.pi, 30)     # azimuthal angle from 0 to pi (half sphere)
-
+        u = np.linspace(np.pi/2, np.pi, 30)    
+        v = np.linspace(0, 2*np.pi, 30)   
         radius = width / 2
         U, V = np.meshgrid(u, v)
         X = radius * np.sin(U) * np.cos(V)
@@ -63,7 +63,7 @@ def draw_3D_base(filename, base_type):
     print(f"Base saved to: {filename}")
 
 
-def draw_flat_base(filename, base_type):
+def draw_flat_base(filename, base_type, add_feet):
     fig, ax = plt.subplots(figsize=(5, 4))
     ax.set_aspect('equal')
     ax.axis('off')
@@ -158,6 +158,20 @@ def draw_flat_base(filename, base_type):
         ]
 
     ax.add_patch(patches.Polygon(top_face, closed=True, facecolor="#cccccc", edgecolor="black", linewidth=2))
+
+    if add_feet:
+        foot_width = width * 0.15
+        foot_height = 0.2
+        spacing = width * 0.25
+        base_y = 0 
+
+        for x_offset in [-spacing, spacing]:
+            rect = patches.Rectangle(
+                (width / 2 + x_offset - foot_width / 2, base_y - foot_height),
+                foot_width, foot_height,
+                linewidth=0, facecolor='grey'
+            )
+            ax.add_patch(rect)
 
     ax.set_xlim(-1, width + 2)
     ax.set_ylim(-1, height + top_depth + 1)
